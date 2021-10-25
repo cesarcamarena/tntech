@@ -1,0 +1,369 @@
+Microsoft (R) Macro Assembler Version 6.15.8803		    05/20/21 14:46:38
+fallout_driver.asm					     Page 1 - 1
+
+
+				.386
+				.MODEL FLAT
+
+				ExitProcess PROTO NEAR32 stdcall, dwExitCode:DWORD
+
+				INCLUDE io.h
+			      C ; IO.H -- header file for I/O macros
+			      C ; 32-bit version for flat memory model
+			      C ; R. Detmer   last revised 8/2000
+			      C .NOLIST     ; turn off listing
+			      C .LIST        ; begin listing
+			      C 
+				INCLUDE debug.h
+			      C INCLUDE io.h
+			      C ; IO.H -- header file for I/O macros
+			      C ; 32-bit version for flat memory model
+			      C ; R. Detmer   last revised 8/2000
+			      C .NOLIST     ; turn off listing
+			      C .LIST        ; begin listing
+			      C 
+			      C 
+ = 0000000D		      C CR          EQU    0Dh   ; carriage return character
+ = 0000000A		      C LF          EQU    0Ah   ; linefeed character
+			      C 
+ 00000000		      C .DATA
+ 00000000 0D 0A 00	      C carriage    BYTE     CR, LF, 0
+ 00000003  0000000D [	      C text        BYTE     13 DUP(?)
+	    00
+	   ]
+			      C 
+			      C outputW    	MACRO   var
+			      C                    itoa text, var
+			      C                    output text
+			      C                    output carriage
+			      C                 ENDM
+			      C 
+			      C outputD  	MACRO  var
+			      C                    dtoa text, var
+			      C                    output text
+			      C                    output carriage
+			      C          	ENDM
+			      C 
+			      C inputW          MACRO  prompt, location
+			      C                    output prompt
+			      C                    input text, 8
+			      C                    atoi text
+			      C                    mov location, ax
+			      C                 ENDM
+			      C 
+			      C inputD          MACRO  prompt, location
+			      C                    output prompt
+			      C                    input text, 13
+			      C                    atod text
+			      C                    mov location, eax
+			      C                 ENDM
+			      C 
+				INCLUDE fallout_procs.h
+			      C .NOLIST
+			      C .LIST
+			      C 
+
+ = 00000019			MAX		EQU 25
+ = 0000000D			LEN		EQU 13
+
+				.STACK 4096
+
+ 00000010			.DATA
+
+ 00000010 00000000		count 			DWORD ?
+ 00000014 00000000		curr 			DWORD ?
+ 00000018 00000000		compare 		DWORD ?
+
+ 0000001C 00000000		index 			DWORD ?
+ 00000020 0000			matches 		WORD ?
+ 00000022 0000			num 			WORD ?
+ 00000024 0000			total 			WORD ?
+
+ 00000026  00000145 [		str_array BYTE MAX * LEN DUP (?)
+	    00
+	   ]
+
+ 0000016B  0000000D [		input_string	BYTE LEN DUP(?)
+	    00
+	   ]
+ 00000178 45 6E 74 65 72	string			BYTE "Enter a string: ", 0
+	   20 61 20 73 74
+	   72 69 6E 67 3A
+	   20 00
+ 00000189 54 68 65 20 6E	num_str			BYTE "The number of strings entered is ", 0
+	   75 6D 62 65 72
+	   20 6F 66 20 73
+	   74 72 69 6E 67
+	   73 20 65 6E 74
+	   65 72 65 64 20
+	   69 73 20 00
+ 000001AB 45 6E 74 65 72	index_prompt	BYTE "Enter the index for the test password (1-based): ", 0
+	   20 74 68 65 20
+	   69 6E 64 65 78
+	   20 66 6F 72 20
+	   74 68 65 20 74
+	   65 73 74 20 70
+	   61 73 73 77 6F
+	   72 64 20 28 31
+	   2D 62 61 73 65
+	   64 29 3A 20 00
+ 000001DD 45 6E 74 65 72	matches_prompt 	BYTE "Enter the number of exact character matches: ", 0
+	   20 74 68 65 20
+	   6E 75 6D 62 65
+	   72 20 6F 66 20
+	   65 78 61 63 74
+	   20 63 68 61 72
+	   61 63 74 65 72
+	   20 6D 61 74 63
+	   68 65 73 3A 20
+	   00
+
+
+ 00000000			.CODE
+
+ 00000000			_start:
+ 00000000
+					;MACRO TO PRINT OUT STRINGS
+					print_strings MACRO array_name, num_strings
+						mov ecx, 0
+						lea ebx, array_name
+						print_loop_start:
+							cmp cx, num_strings
+							jge print_loop_finished
+							output BYTE PTR [ebx]
+							output carriage
+							inc cx
+							add ebx, LEN
+							jmp print_loop_start
+						print_loop_finished:
+					ENDM
+
+ 00000000  8D 1D 00000026 R		lea ebx, str_array
+ 00000006  B9 00000000			mov ecx, 0
+
+					;OUTPUT THE INPUT THE FIRST TIME AROUND
+ 0000000B				loop_start:
+ 0000000B  66| 81 F9 0019			cmp cx, WORD PTR MAX
+ 00000010  7F 42				jg loop_finished
+						output string
+						input BYTE PTR [ebx], LEN
+						output BYTE PTR [ebx]
+						output carriage
+ 00000048  80 3B 78				cmp BYTE PTR [ebx], 'x'
+ 0000004B  74 07				je loop_finished
+ 0000004D  66| 41				inc cx
+ 0000004F  83 C3 0D				add ebx, LEN
+ 00000052  EB B7				jmp loop_start
+ 00000054				loop_finished:
+
+					;PRINTS OUT NUMBER OF STRINGS INPUT/OUTPUT
+ 00000054  66| 89 0D			mov total, cx
+	   00000024 R
+ 0000005B  66| 89 0D			mov num, cx
+	   00000022 R
+					output carriage
+					output num_str
+					outputW cx
+					output carriage
+
+					;LOOPS TO PRINT OUT PASSWORDS, GET INDEX, GET NUM MATCHES, DO HACKING STUFF AND LOOP
+ 000000BB				loop_begins:
+
+						print_strings str_array, num
+
+ 000000EE  66| 83 3D				cmp num, 1
+	   00000022 R 01
+ 000000F6  0F 8E 00000170			jle loop_ends ;final exit
+
+						;GETS THE INPUT/OUTPUT FOR INDEX
+						output index_prompt
+						input input_string, LEN
+						output input_string
+						atod input_string
+ 00000138  A3 0000001C R			mov index, eax
+
+						output carriage
+
+						;GETS THE INPUT/OUTPUT FOR MATCHES
+						output 	matches_prompt
+						input 	input_string, LEN
+						output 	input_string
+						atoi 	input_string
+ 00000189  66| A3				mov 	matches, ax
+	   00000020 R
+
+						output carriage
+						output carriage
+
+						;(index - 1) x LEN
+ 000001AB  83 2D 0000001C R			sub 	index, 1		;index - 1
+	   01
+ 000001B2  A1 0000001C R			mov 	eax, index 		;store it in eax
+ 000001B7  BB 0000000D				mov 	ebx, LEN 		;store LEN in edx
+ 000001BC  F7 E3				mul 	ebx 			;((index - 1) x LEN)
+ 000001BE  A3 0000001C R			mov 	index, eax
+
+ 000001C3  8D 35 00000026 R			lea 	esi, str_array
+ 000001C9  89 35 00000010 R			mov 	count, esi
+ 000001CF  89 35 00000014 R			mov 	curr, esi
+ 000001D5  03 35 0000001C R			add 	esi, index
+
+						;SETTING UP THE COMPARE WORD
+ 000001DB  B8 00000000				mov 	eax, 0
+ 000001E0  66| A1				mov 	ax, total
+	   00000024 R
+ 000001E6  BB 0000000D				mov 	ebx, LEN
+ 000001EB  F7 E3				mul 	ebx 			;(total x LEN)
+						
+ 000001ED  8D 3D 00000026 R			lea 	edi, str_array
+ 000001F3  03 F8				add 	edi, eax
+ 000001F5  89 3D 00000018 R			mov 	compare, edi
+
+						fallout_swap compare, esi
+
+ 00000209  66| 8B 0D				mov cx, num
+	   00000022 R
+ 00000210  66| C7 05				mov num, 0
+	   00000022 R
+	   0000
+ 00000219					swap_loop:
+ 00000219  66| 83 F9 00					cmp cx, 0
+ 0000021D  74 48					je swap_done
+							;mov esi, curr
+							;output BYTE PTR [esi]
+							num_matches curr, compare
+							;outputW WORD PTR 123
+ 00000232  66| 39 05					cmp matches, ax
+	   00000020 R
+ 00000239  75 21					jne	next
+
+ 0000023B						swap_word:
+								fallout_swap count, curr
+ 0000024E  66| FF 05						inc num
+	   00000022 R
+ 00000255  83 05 00000010 R					add count, LEN
+	   0D
+
+ 0000025C						next:
+ 0000025C  66| 49						dec cx
+ 0000025E  83 05 00000014 R					add curr, LEN
+	   0D
+
+ 00000265  EB B2				jmp swap_loop
+
+ 00000267					swap_done:
+
+ 00000267  E9 FFFFFE4F				jmp loop_begins
+
+ 0000026C				loop_ends:
+
+				INVOKE ExitProcess, 0
+ 00000273			PUBLIC _start
+				END
+Microsoft (R) Macro Assembler Version 6.15.8803		    05/20/21 14:46:38
+fallout_driver.asm					     Symbols 2 - 1
+
+
+
+
+Macros:
+
+                N a m e                 Type
+
+atod . . . . . . . . . . . . . .	Proc
+atoi . . . . . . . . . . . . . .	Proc
+dtoa . . . . . . . . . . . . . .	Proc
+fallout_swap . . . . . . . . . .	Proc
+inputD . . . . . . . . . . . . .	Proc
+inputW . . . . . . . . . . . . .	Proc
+input  . . . . . . . . . . . . .	Proc
+itoa . . . . . . . . . . . . . .	Proc
+num_matches  . . . . . . . . . .	Proc
+outputD  . . . . . . . . . . . .	Proc
+outputW  . . . . . . . . . . . .	Proc
+output . . . . . . . . . . . . .	Proc
+print_strings  . . . . . . . . .	Proc
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00001000 DWord	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 0000020B DWord	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000273 DWord	  Public  'CODE'	
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+$$$00001 . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000273 Private
+  loop_start . . . . . . . . . .	L Near	 0000000B _TEXT	
+  loop_finished  . . . . . . . .	L Near	 00000054 _TEXT	
+  loop_begins  . . . . . . . . .	L Near	 000000BB _TEXT	
+  print_loop_start . . . . . . .	L Near	 000000C6 _TEXT	
+  print_loop_finished  . . . . .	L Near	 000000EE _TEXT	
+  swap_loop  . . . . . . . . . .	L Near	 00000219 _TEXT	
+  swap_word  . . . . . . . . . .	L Near	 0000023B _TEXT	
+  next . . . . . . . . . . . . .	L Near	 0000025C _TEXT	
+  swap_done  . . . . . . . . . .	L Near	 00000267 _TEXT	
+  loop_ends  . . . . . . . . . .	L Near	 0000026C _TEXT	
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000000h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+CR . . . . . . . . . . . . . . .	Number	 0000000Dh   
+LEN  . . . . . . . . . . . . . .	Number	 0000000Dh   
+LF . . . . . . . . . . . . . . .	Number	 0000000Ah   
+MAX  . . . . . . . . . . . . . .	Number	 00000019h   
+_start . . . . . . . . . . . . .	L Near	 00000000 _TEXT	Public
+atodproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+atoiproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+carriage . . . . . . . . . . . .	Byte	 00000000 _DATA	
+compare  . . . . . . . . . . . .	DWord	 00000018 _DATA	
+count  . . . . . . . . . . . . .	DWord	 00000010 _DATA	
+curr . . . . . . . . . . . . . .	DWord	 00000014 _DATA	
+dtoaproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+fallout_swap_proc  . . . . . . .	L Near	 00000000 FLAT	External
+index_prompt . . . . . . . . . .	Byte	 000001AB _DATA	
+index  . . . . . . . . . . . . .	DWord	 0000001C _DATA	
+inproc . . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+input_string . . . . . . . . . .	Byte	 0000016B _DATA	
+itoaproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+loop_begins  . . . . . . . . . .	L Near	 000000BB _TEXT	
+loop_ends  . . . . . . . . . . .	L Near	 0000026C _TEXT	
+loop_finished  . . . . . . . . .	L Near	 00000054 _TEXT	
+loop_start . . . . . . . . . . .	L Near	 0000000B _TEXT	
+matches_prompt . . . . . . . . .	Byte	 000001DD _DATA	
+matches  . . . . . . . . . . . .	Word	 00000020 _DATA	
+next . . . . . . . . . . . . . .	L Near	 0000025C _TEXT	
+num_matches_proc . . . . . . . .	L Near	 00000000 FLAT	External
+num_str  . . . . . . . . . . . .	Byte	 00000189 _DATA	
+num  . . . . . . . . . . . . . .	Word	 00000022 _DATA	
+outproc  . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+print_loop_finished  . . . . . .	L Near	 000000EE _TEXT	
+print_loop_start . . . . . . . .	L Near	 000000C6 _TEXT	
+str_array  . . . . . . . . . . .	Byte	 00000026 _DATA	
+string . . . . . . . . . . . . .	Byte	 00000178 _DATA	
+swap_done  . . . . . . . . . . .	L Near	 00000267 _TEXT	
+swap_loop  . . . . . . . . . . .	L Near	 00000219 _TEXT	
+swap_word  . . . . . . . . . . .	L Near	 0000023B _TEXT	
+text . . . . . . . . . . . . . .	Byte	 00000003 _DATA	
+total  . . . . . . . . . . . . .	Word	 00000024 _DATA	
+
+	   0 Warnings
+	   0 Errors

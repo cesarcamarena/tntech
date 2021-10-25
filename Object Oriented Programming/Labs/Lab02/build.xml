@@ -1,0 +1,58 @@
+
+<project name="Brass" default="help" basedir=".">
+
+   <path id="class-path">
+      <pathelement location="build"/>
+      <pathelement location="/${drive-letter}/Java/jdom-2.0.6/jdom-2.0.6.jar"/>
+   </path>
+
+   <target name="help">
+      <echo>
+         Brass build management for Lab02.
+      </echo>
+   </target>
+
+   <target name="clean">
+      <delete dir="build"/>
+      <mkdir dir="build"/>
+   </target>
+   
+   <target name="build" depends="clean">
+      <javac srcdir="src" destdir="build" includeantruntime="false">
+         <classpath refid="class-path"/>
+      </javac>
+   </target>
+
+   <target name="permute" depends="build">
+      <java fork="true" failonerror="yes" classpath="build" classname="CreateFilePermutation">
+         <classpath refid="class-path"/>
+      </java>
+   </target>
+
+   <target name="permute_2" depends="build">
+      <java fork="true" failonerror="yes" classpath="build" classname="CreateFilePermutation">
+         <classpath refid="class-path"/>
+         <arg value="66"/>
+         <arg value="resources/brass_deck_permute.txt"/>
+      </java>
+   </target>
+
+   <target name="permute_3" depends="build">
+      <java fork="true" failonerror="yes" classpath="build" classname="CreateFilePermutation">
+         <classpath refid="class-path"/>
+         <arg value="${arg0}"/>
+         <arg value="${arg1}"/>
+      </java>
+   </target>
+
+   <target name="run" depends="build">
+      <java fork="true" failonerror="yes" classpath="build" classname="brass.BrassDriver">
+         <classpath refid="class-path"/>
+      </java>
+   </target>
+
+   <target name="javadoc">
+      <javadoc packagenames="util.*,gui.*" destdir="javadoc" sourcepath="src" classpath="build" windowtitle="Brass"/>
+   </target>
+
+</project>

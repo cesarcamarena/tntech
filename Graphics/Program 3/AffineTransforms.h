@@ -1,0 +1,20 @@
+#if !defined AFFINE_TRANSFORMS_H
+#define AFFINE_TRANSFORMS_H
+
+#include "Vertex.h"
+
+class AffineTransforms
+{
+   private:
+      static double PI;
+
+   public:
+      static Matrix* translate(double x, double y, double z);
+      static Matrix* scale(double x, double y, double z);
+      static Matrix* rotateX(double degrees);
+      static Matrix* rotateY(double degrees);
+      static Matrix* rotateZ(double degrees);
+      static Matrix* window(int xPixels, int yPixels);
+};
+
+#endif

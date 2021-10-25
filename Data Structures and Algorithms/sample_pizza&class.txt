@@ -1,0 +1,68 @@
+struct Pizza
+{
+	Toppings** tops;
+	int sz;
+	int max;
+};
+
+Pizza* createPizza(int m)
+{
+	Pizza* pizza = new Pizza;
+	pizza->max = m;
+	pizza->tops = new Toppings*[pizza->max];
+	pizza->sz = 0;
+	return pizza;
+	
+}
+
+int length(Pizza* pizza)
+{
+	return pizza->sz;
+}
+//Assume that toppings has a destroyToppings function
+void destroyPizza(Pizza* pizza)
+{
+	for(int i =0; i < pizza->sz;i++)
+	{
+		destroyToppings(pizza->tops[sz]);
+	}
+	delete[] tops;
+	delete pizza;
+}
+
+
+
+class Pizza
+{
+	private:
+		Toppings** tops;
+		int sz;
+		int max;
+	public:
+		Pizza()
+		~Pizza();
+		int length();
+};
+
+
+Pizza::Pizza(int m)
+{
+	max = m;
+	tops = new Toppings*[max];
+	sz = 0;
+}
+
+Pizza::~Pizza()
+{
+	for(int i =0; i < sz; i++)
+	{
+		delete tops[i];
+	}
+	delete[] tops;
+}
+
+int Pizza::length()
+{
+	return sz;
+}
+

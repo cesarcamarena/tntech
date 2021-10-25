@@ -1,0 +1,22 @@
+#version 120
+#extension GL_EXT_geometry_shader4 : enable
+
+varying in vec3 transformed_normal_vertex_program[3];
+varying in vec4 vertex_position_in_eye_coords_vertex_program[3];
+
+varying out vec3 transformed_normal_geometry_program;
+varying out vec4 vertex_position_in_eye_coords_geometry_program;
+
+//pass through geometry shader
+void main()
+{
+   for (int i = 0; i < gl_VerticesIn; i++)
+   {
+      gl_Position = gl_PositionIn[i];
+      transformed_normal_geometry_program = transformed_normal_vertex_program[i];
+      vertex_position_in_eye_coords_geometry_program = vertex_position_in_eye_coords_vertex_program[i];
+      EmitVertex();
+   }
+
+   EndPrimitive();
+}

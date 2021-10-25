@@ -1,0 +1,63 @@
+#version 120
+#extension GL_EXT_geometry_shader4 : enable
+
+varying vec4 ecp;
+uniform sampler2D image_1;
+uniform sampler2D image_2;
+varying vec3 tn;
+
+void main()
+{
+   vec3 eyeCoordPosition = ecp.xyz;
+
+   vec3 lightPosition = gl_LightSource[0].position.xyz;
+   vec3 lightVector = normalize(lightPosition - eyeCoordPosition);
+
+   vec2 st0 = gl_TexCoord[0].st;
+
+   vec3 normal_map_color = texture2D(image_1, st0).rgb;
+   vec3 color_map = texture2D(image_2, st0).rgb;
+
+   normal_map_color = (normal_map_color*2.0) - 1.0;
+
+   vec3 b_up = vec3(0,1,0);
+   vec3 n = normalize(tn);
+   float bup_dot_n = dot(b_up, n);
+   float bup_factor = 1.0 - bup_dot_n*bup_dot_n;
+   bup_factor = sqrt(bup_factor);
+   bup_factor = 1.0/bup_factor;
+   vec3 b = -(bup_dot_n * bup_factor * n) + (bup_factor * b_up);
+   vec3 t = cross(b, n);
+   mat3 tangentTransformMatrix = mat3(t, b, n);
+
+   vec3 transformedNormal = tangentTransformMatrix*normal_map_color;
+   transformedNormal = normalize(transformedNormal);
+
+   float diffuseIntensity = dot(lightVector, transformedNormal);
+   if (diffuseIntensity < 0)
+   {
+      diffuseIntensity = 0;
+   }
+
+   vec3 eyePoint = vec3(0.0, 0.0, 0.0);  
+   vec3 viewVector = normalize(eyePoint - eyeCoordPosition);
+   vec3 reflectVector = reflect(-1*lightVector, transformedNormal);
+   float specularIntensity = dot(viewVector, reflectVector);
+   if (specularIntensity < 0 || diffuseIntensity == 0)
+   {
+      specularIntensity = 0;
+   }
+   else
+   {
+      float shininess = gl_FrontMaterial.shininess;
+      specularIntensity = pow(specularIntensity, shininess);
+   }
+
+   vec4 diffuseMaterial = vec4(color_map, 1.0);
+   vec3 diffuseColor = diffuseMaterial.xyz*diffuseIntensity;
+   vec4 diffuseColor4 = vec4(diffuseColor, 1.0);
+   vec3 specularColor = vec3(1.0, 1.0, 1.0)*specularIntensity;
+   vec4 specularColor4 = vec4(specularColor, 1.0);
+
+   gl_FragColor = diffuseColor4;
+}

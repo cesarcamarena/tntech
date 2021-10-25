@@ -1,0 +1,2 @@
+66
+resources/brass_deck_shuffle.txt

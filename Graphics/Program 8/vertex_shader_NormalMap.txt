@@ -1,0 +1,14 @@
+#version 120
+#extension GL_EXT_geometry_shader4 : enable
+
+varying out vec4 eyeCoordPosition;
+varying out vec3 transformedNormal;
+
+void main()
+{
+   gl_TexCoord[0] = gl_MultiTexCoord1;
+   gl_Position = gl_ModelViewProjectionMatrix*gl_Vertex;
+   eyeCoordPosition = gl_ModelViewMatrix*gl_Vertex;
+
+   transformedNormal = normalize(gl_NormalMatrix*gl_Normal);
+}

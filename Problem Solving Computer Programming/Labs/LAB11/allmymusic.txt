@@ -1,0 +1,49 @@
+----------------------------------- ALBUM 1 -----------------------------------
+      Album Title:  Classic Disney, Vol. 1: 60 Years of Musical Magic
+           Artist:  various
+            Genre:  Children's Music, Disney
+    Year Released:  1995
+  Number of Songs:  25
+           Rating:  * * * * * and 1/2
+----------------------------------- ALBUM 2 -----------------------------------
+      Album Title:  Greatest Hits
+           Artist:  Queen
+            Genre:  Rock
+    Year Released:  1994
+  Number of Songs:  17
+           Rating:  * * * * * 
+----------------------------------- ALBUM 3 -----------------------------------
+      Album Title:  Electriclarryland
+           Artist:  Butthole Surfers
+            Genre:  Alternative Rock
+    Year Released:  1996
+  Number of Songs:  13
+           Rating:  * * * and 1/2
+----------------------------------- ALBUM 4 -----------------------------------
+      Album Title:  Rise
+           Artist:  Trip Lee
+            Genre:  Rap, Hip-Hop
+    Year Released:  2014
+  Number of Songs:  14
+           Rating:  * * * * * 
+----------------------------------- ALBUM 5 -----------------------------------
+      Album Title:  25
+           Artist:  Adele
+            Genre:  Pop
+    Year Released:  2015
+  Number of Songs:  11
+           Rating:  * * * * * and 1/2
+----------------------------------- ALBUM 6 -----------------------------------
+      Album Title:  Keep Me In Your Heart For A While: The Best of Madeleine Peyroux
+           Artist:  Madeleine Peyroux
+            Genre:  Jazz
+    Year Released:  2014
+  Number of Songs:  15
+           Rating:  * * * * * and 1/2
+----------------------------------- ALBUM 7 -----------------------------------
+      Album Title:  Barton Hollow
+           Artist:  Civil Wars
+            Genre:  Alternative Rock
+    Year Released:  2011
+  Number of Songs:  14
+           Rating:  * * * * * and 1/2

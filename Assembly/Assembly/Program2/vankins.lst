@@ -1,0 +1,522 @@
+Microsoft (R) Macro Assembler Version 6.15.8803		    09/02/21 16:10:07
+vankins.asm						     Page 1 - 1
+
+
+				.386
+				.MODEL FLAT
+
+				ExitProcess PROTO NEAR32 stdcall, dwExitCode:DWORD
+
+				INCLUDE io.h
+			      C ; IO.H -- header file for I/O macros
+			      C ; 32-bit version for flat memory model
+			      C ; R. Detmer   last revised 8/2000
+			      C .NOLIST     ; turn off listing
+			      C .LIST        ; begin listing
+			      C 
+				INCLUDE debug.h
+			      C INCLUDE io.h
+			      C ; IO.H -- header file for I/O macros
+			      C ; 32-bit version for flat memory model
+			      C ; R. Detmer   last revised 8/2000
+			      C .NOLIST     ; turn off listing
+			      C .LIST        ; begin listing
+			      C 
+			      C 
+ = 0000000D		      C CR          EQU    0Dh   ; carriage return character
+ = 0000000A		      C LF          EQU    0Ah   ; linefeed character
+			      C 
+ 00000000		      C .DATA
+ 00000000 0D 0A 00	      C carriage    BYTE     CR, LF, 0
+ 00000003  0000000D [	      C text        BYTE     13 DUP(?)
+	    00
+	   ]
+			      C 
+			      C outputW    	MACRO   var
+			      C                    itoa text, var
+			      C                    output text
+			      C                    output carriage
+			      C                 ENDM
+			      C 
+			      C outputD  	MACRO  var
+			      C                    dtoa text, var
+			      C                    output text
+			      C                    output carriage
+			      C          	ENDM
+			      C 
+			      C inputW          MACRO  prompt, location
+			      C                    output prompt
+			      C                    input text, 8
+			      C                    atoi text
+			      C                    mov location, ax
+			      C                 ENDM
+			      C 
+			      C inputD          MACRO  prompt, location
+			      C                    output prompt
+			      C                    input text, 13
+			      C                    atod text
+			      C                    mov location, eax
+			      C                 ENDM
+			      C 
+
+ = 0000000D			CR	EQU	0Dh
+ = 0000000A			LF	EQU	0Ah
+
+ = 00000064			MAXNBRS   EQU   100
+
+				.STACK    4096
+
+ 00000010			.DATA
+
+ 00000010  00000064 [		matrix_addr    DWORD    MAXNBRS DUP (?) 
+	    00000000
+	   ]
+ 000001A0  00000008 [		ArrayShift    DWORD    8       DUP (?) 
+	    00000000
+	   ]
+ 000001C0  00000008 [		Nrow          WORD     8       DUP (?)
+	    0000
+	   ]
+ 000001D0  00000008 [		Mcolumn       WORD     8       DUP (?)
+	    0000
+	   ]
+ 000001E0  00000008 [		MandNTotal    WORD     8       DUP (?)
+	    0000
+	   ]
+ 000001F0  00000008 [		string        BYTE     8       DUP (?)
+	    00
+	   ]
+ 000001F8  000000C8 [		lineOut       BYTE     200     DUP (?)
+	    00
+	   ]
+ 000002C0 72 00			StrRight      BYTE     "r", 0
+ 000002C2 64 00			StrDown       BYTE     "d", 0
+
+ 00000000			.CODE
+				getMandN	MACRO Nrow, Mcolumn
+				    input  string, 8
+				    atod   string
+				    mov    Nrow, AX
+				    input  string, 8
+				    atod   string
+				    mov    Mcolumn, AX
+				    ENDM
+
+				getElement MACRO Nrow, Mcolumn, MandNTotal, matrix_addr
+				    LOCAL body, whileNotDone, endWhile
+				    mul   Nrow
+				    mov   MandNTotal, AX
+				    mov   DI, 0
+				    lea EBX, matrix_addr
+				    whileNotDone: cmp  DI, MandNTotal
+				          jl  short body
+				          jmp endWhile
+				    body:
+				        input string, 8
+				        atod  string
+				        mov [ebx], eax
+				        cmp SI, Mcolumn
+				        add   ebx, 4
+				        inc   DI
+				        jmp  whileNotDone
+				    endWhile:
+				    ENDM
+
+				displayMatrix MACRO Mcolumn, MandNTotal, matrix_addr
+				   LOCAL Mcolumn, MandNTotal, matrix_addr, whileNotFinish, body, endWhile, NotEndLine, EndLine, theNext
+				   lea EBX, matrix_addr
+				   mov DI, 0
+				   mov SI, 1
+				   whileNotFinish: cmp DI, MandNTotal
+				            jl short body
+				            jmp short endWhile
+				   body:
+				        cmp SI, Mcolumn
+				        jl  short NotEndLine
+				        jmp short EndLine
+				        NotEndLine:
+				            itoa lineOut, [ebx]
+				            output lineOut
+				            inc SI
+				            jmp short theNext
+				        EndLine:
+				            mov SI, 1
+				            itoa lineOut, [ebx]
+				            output lineOut
+				            output carriage
+				        theNext:
+				        add ebx, 4
+				        inc DI
+				        jmp whileNotFinish
+				   endWhile:
+				   output carriage 
+				   ENDM
+
+				setElement MACRO Nrow, Mcolumn, MandNTotal, matrix_addr
+				   lea EBX, matrix_addr
+				   mov EDI, EBX
+				   mov AX, 4
+				   mul MandNTotal
+				   movzx EAX, AX
+				   add EBX, EAX
+				   sub EBX, 4
+				   mov ArrayShift, EBX
+				   mov SI, Mcolumn
+				   whileStillFilling: cmp EBX, EDI
+				            jnl FillSquare
+				            jmp Finished
+				   FillSquare:
+				        cmp SI, 1
+				        jl  AddESICol
+				        jmp continueOn
+				        AddESICol:
+				            add SI, Mcolumn
+				            jmp continueOn
+				        continueOn:
+				        cmp EBX, ArrayShift
+				        je RightBottom
+				        jmp NotRightBottom
+				        RightBottom:
+				            sub EBX, 4
+				            dec SI
+				            jmp whileStillFilling
+				        NotRightBottom:
+				            cmp SI, Mcolumn
+				            je RightSide
+				            jmp CheckBottom
+				            RightSide:
+				                mov AX, 4
+				                mul Mcolumn
+				                movzx EAX, AX
+				                mov EDX, EBX
+				                add EBX, EAX
+				                jg AddToSquare
+				                jmp DecreaseEBX
+				                AddToSquare:
+				                    mov ECX, [EBX]
+				                    mov EBX, EDX          
+				                    mov EDX, [EBX]        
+				                    mov EAX, ECX          
+				                    add EAX, EDX          
+				                    mov DWORD PTR [EBX], EAX
+				                    sub EBX, 4
+					                dec SI
+				                    jmp whileStillFilling
+				                DecreaseEBX:
+				                    dec SI
+				                    mov EBX, EDX
+				                    sub EBX, 4
+				                    jmp whileStillFilling
+				            CheckBottom:
+				                mov AX, 4
+				                mul Mcolumn 
+				                movzx EAX, AX
+				                mov ECX, EAX
+				                mov EAX, ArrayShift
+				                sub EAX, ECX
+				                cmp EBX, EAX
+				                jge AtBottom
+				                jmp NotAtBottomOrRight
+				                AtBottom:
+				                    dec SI
+				                    cmp DWORD PTR [EBX + 4], 0
+				                    jg AddToGrid2
+				                    jmp DecreaseEBX2
+				                    AddToGrid2:
+				                        mov ECX, [EBX]
+				                        mov EDX, [EBX + 4]
+				                        mov EAX, ECX
+				                        add EAX, EDX
+				                        mov DWORD PTR [EBX], EAX
+				                    DecreaseEBX2:
+				                        sub EBX, 4
+				                        jmp whileStillFilling
+				                NotAtBottomOrRight:
+				                    dec SI
+				                    mov ECX, [EBX + 4]
+				                    mov AX, 4
+				                    mul Mcolumn
+				                    movzx EAX, AX
+				                    add EAX, EBX 
+				                    mov EDX, EBX 
+				                    mov EBX, EAX 
+				                    mov EAX, [EBX] 
+				                    mov EBX, EDX  
+				                    mov EDX, EAX  
+				                    cmp ECX, EDX   
+				                    jge AddRight
+				                    jmp AddBottom
+				                    AddRight:
+				                        add ECX, [EBX] 
+				                        mov DWORD PTR [EBX], ECX
+				                        sub EBX, 4
+				                        jmp whileStillFilling
+				                    AddBottom:                         
+				                        add EDX, [EBX]
+				                        mov DWORD PTR [EBX], EDX
+				                        sub EBX, 4
+				                        jmp whileStillFilling
+				   Finished:
+				   ENDM
+
+				findAndDisplayPath MACRO Mcolumn, Nrow, matrix_addr
+				   LOCAL whileLoop, NotFinished, StillNotFinished, GoRight, GoDown
+				   lea EBX, matrix_addr
+				   mov DI, 1
+				   mov SI, 1
+				   whileLoop: cmp DI, Nrow
+				        jl NotFinished
+				        jmp AtBottomRow
+				        NotFinished:
+				           cmp SI, Mcolumn
+				           jl  StillNotFinished
+				           jmp AtBottomColumn
+				           StillNotFinished:
+				                mov ECX, [EBX + 4]     
+				                mov AX, 4
+				                mul Mcolumn
+				                movzx EAX, AX
+				                mov EDX, EBX
+				                add EBX, EAX
+				                mov EAX, [EBX]
+				                cmp ECX, EAX
+				                jge GoRight
+				                jmp GoDown
+				                GoRight:
+				                   mov EBX, EDX
+				                   add EBX, 4
+				                   inc SI
+				                   output StrRight
+				                   jmp whileLoop
+				                GoDown:
+				                   mov EBX, EDX
+				                   mov AX, 4
+				                   mul Mcolumn
+				                   movzx EAX, AX
+				                   add EBX, EAX
+				                   inc DI
+				                   output StrDown
+				                   jmp whileLoop               
+				           AtBottomColumn:
+				                mov AX, 4
+				                mul Mcolumn
+				                movzx EAX, AX
+				                add EBX, EAX
+				                cmp DWORD PTR [EBX], 0
+				                jge GoDown2
+				                jmp GoRightEnd
+				                GoDown2: 
+				                   output StrDown
+				                   inc DI
+				                   jmp whileLoop
+				                GoRightEnd:
+				                   output StrRight
+				                   inc SI
+				                   jmp DonePath
+				        AtBottomRow:
+				            cmp SI, Mcolumn
+				            jle CheckMore
+				            jmp DonePath
+				            CheckMore:
+				                mov EAX, [EBX + 4]
+				                cmp DWORD PTR EAX, 0
+				                jge GoRight2
+				                jmp GoDownEnd
+				                GoRight2:
+				                  output StrRight
+				                  inc SI
+				                  jmp whileLoop
+				                GoDownEnd:
+				                  output StrDown
+				                  inc DI
+				                  jmp DonePath
+				     DonePath:
+				   ENDM
+
+ 00000000			_start:
+ 00000000			    getMandN           Nrow, Mcolumn
+				    getElement       Nrow, Mcolumn, MandNTotal, matrix_addr
+				    displayMatrix   Mcolumn, MandNTotal, matrix_addr
+				    setElement  Nrow, Mcolumn, MandNTotal, matrix_addr
+				    displayMatrix   Mcolumn, MandNTotal, matrix_addr
+				    findAndDisplayPath Mcolumn, Nrow, matrix_addr
+				    output carriage
+				    output carriage
+				    
+				    INVOKE	  ExitProcess, 0
+
+ 000003E3			PUBLIC _start
+
+				END
+Microsoft (R) Macro Assembler Version 6.15.8803		    09/02/21 16:10:07
+vankins.asm						     Symbols 2 - 1
+
+
+
+
+Macros:
+
+                N a m e                 Type
+
+atod . . . . . . . . . . . . . .	Proc
+atoi . . . . . . . . . . . . . .	Proc
+displayMatrix  . . . . . . . . .	Proc
+dtoa . . . . . . . . . . . . . .	Proc
+findAndDisplayPath . . . . . . .	Proc
+getElement . . . . . . . . . . .	Proc
+getMandN . . . . . . . . . . . .	Proc
+inputD . . . . . . . . . . . . .	Proc
+inputW . . . . . . . . . . . . .	Proc
+input  . . . . . . . . . . . . .	Proc
+itoa . . . . . . . . . . . . . .	Proc
+outputD  . . . . . . . . . . . .	Proc
+outputW  . . . . . . . . . . . .	Proc
+output . . . . . . . . . . . . .	Proc
+setElement . . . . . . . . . . .	Proc
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00001000 DWord	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 000002C4 DWord	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 000003E3 DWord	  Public  'CODE'	
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+$$$00001 . . . . . . . . . . . .	P Near	 00000000 _TEXT	Length= 000003E3 Private
+  ??0001 . . . . . . . . . . . .	L Near	 00000063 _TEXT	
+  ??0000 . . . . . . . . . . . .	L Near	 0000006E _TEXT	
+  ??0002 . . . . . . . . . . . .	L Near	 0000009E _TEXT	
+  ??0006 . . . . . . . . . . . .	L Near	 000000AC _TEXT	
+  ??0007 . . . . . . . . . . . .	L Near	 000000B7 _TEXT	
+  ??0009 . . . . . . . . . . . .	L Near	 000000C2 _TEXT	
+  ??000A . . . . . . . . . . . .	L Near	 000000E7 _TEXT	
+  ??000B . . . . . . . . . . . .	L Near	 0000011A _TEXT	
+  ??0008 . . . . . . . . . . . .	L Near	 00000121 _TEXT	
+  whileStillFilling  . . . . . .	L Near	 00000157 _TEXT	
+  FillSquare . . . . . . . . . .	L Near	 00000160 _TEXT	
+  AddESICol  . . . . . . . . . .	L Near	 00000168 _TEXT	
+  continueOn . . . . . . . . . .	L Near	 00000171 _TEXT	
+  RightBottom  . . . . . . . . .	L Near	 0000017B _TEXT	
+  NotRightBottom . . . . . . . .	L Near	 00000182 _TEXT	
+  RightSide  . . . . . . . . . .	L Near	 0000018D _TEXT	
+  AddToSquare  . . . . . . . . .	L Near	 000001A3 _TEXT	
+  DecreaseEBX  . . . . . . . . .	L Near	 000001B6 _TEXT	
+  CheckBottom  . . . . . . . . .	L Near	 000001BF _TEXT	
+  AtBottom . . . . . . . . . . .	L Near	 000001DC _TEXT	
+  AddToGrid2 . . . . . . . . . .	L Near	 000001E6 _TEXT	
+  DecreaseEBX2 . . . . . . . . .	L Near	 000001F1 _TEXT	
+  NotAtBottomOrRight . . . . . .	L Near	 000001F9 _TEXT	
+  AddRight . . . . . . . . . . .	L Near	 0000021E _TEXT	
+  AddBottom  . . . . . . . . . .	L Near	 0000022A _TEXT	
+  Finished . . . . . . . . . . .	L Near	 00000236 _TEXT	
+  ??000F . . . . . . . . . . . .	L Near	 00000244 _TEXT	
+  ??0010 . . . . . . . . . . . .	L Near	 0000024F _TEXT	
+  ??0012 . . . . . . . . . . . .	L Near	 0000025A _TEXT	
+  ??0013 . . . . . . . . . . . .	L Near	 0000027F _TEXT	
+  ??0014 . . . . . . . . . . . .	L Near	 000002B2 _TEXT	
+  ??0011 . . . . . . . . . . . .	L Near	 000002B9 _TEXT	
+  ??0015 . . . . . . . . . . . .	L Near	 000002D5 _TEXT	
+  ??0016 . . . . . . . . . . . .	L Near	 000002E3 _TEXT	
+  ??0017 . . . . . . . . . . . .	L Near	 000002EE _TEXT	
+  ??0018 . . . . . . . . . . . .	L Near	 0000030B _TEXT	
+  ??0019 . . . . . . . . . . . .	L Near	 00000322 _TEXT	
+  AtBottomColumn . . . . . . . .	L Near	 00000346 _TEXT	
+  GoDown2  . . . . . . . . . . .	L Near	 0000035D _TEXT	
+  GoRightEnd . . . . . . . . . .	L Near	 00000372 _TEXT	
+  AtBottomRow  . . . . . . . . .	L Near	 00000384 _TEXT	
+  CheckMore  . . . . . . . . . .	L Near	 0000038F _TEXT	
+  GoRight2 . . . . . . . . . . .	L Near	 00000399 _TEXT	
+  GoDownEnd  . . . . . . . . . .	L Near	 000003AE _TEXT	
+  DonePath . . . . . . . . . . .	L Near	 000003C0 _TEXT	
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+??0000 . . . . . . . . . . . . .	L Near	 0000006E _TEXT	
+??0001 . . . . . . . . . . . . .	L Near	 00000063 _TEXT	
+??0002 . . . . . . . . . . . . .	L Near	 0000009E _TEXT	
+??0006 . . . . . . . . . . . . .	L Near	 000000AC _TEXT	
+??0007 . . . . . . . . . . . . .	L Near	 000000B7 _TEXT	
+??0008 . . . . . . . . . . . . .	L Near	 00000121 _TEXT	
+??0009 . . . . . . . . . . . . .	L Near	 000000C2 _TEXT	
+??000A . . . . . . . . . . . . .	L Near	 000000E7 _TEXT	
+??000B . . . . . . . . . . . . .	L Near	 0000011A _TEXT	
+??000F . . . . . . . . . . . . .	L Near	 00000244 _TEXT	
+??0010 . . . . . . . . . . . . .	L Near	 0000024F _TEXT	
+??0011 . . . . . . . . . . . . .	L Near	 000002B9 _TEXT	
+??0012 . . . . . . . . . . . . .	L Near	 0000025A _TEXT	
+??0013 . . . . . . . . . . . . .	L Near	 0000027F _TEXT	
+??0014 . . . . . . . . . . . . .	L Near	 000002B2 _TEXT	
+??0015 . . . . . . . . . . . . .	L Near	 000002D5 _TEXT	
+??0016 . . . . . . . . . . . . .	L Near	 000002E3 _TEXT	
+??0017 . . . . . . . . . . . . .	L Near	 000002EE _TEXT	
+??0018 . . . . . . . . . . . . .	L Near	 0000030B _TEXT	
+??0019 . . . . . . . . . . . . .	L Near	 00000322 _TEXT	
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000000h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+AddBottom  . . . . . . . . . . .	L Near	 0000022A _TEXT	
+AddESICol  . . . . . . . . . . .	L Near	 00000168 _TEXT	
+AddRight . . . . . . . . . . . .	L Near	 0000021E _TEXT	
+AddToGrid2 . . . . . . . . . . .	L Near	 000001E6 _TEXT	
+AddToSquare  . . . . . . . . . .	L Near	 000001A3 _TEXT	
+ArrayShift . . . . . . . . . . .	DWord	 000001A0 _DATA	
+AtBottomColumn . . . . . . . . .	L Near	 00000346 _TEXT	
+AtBottomRow  . . . . . . . . . .	L Near	 00000384 _TEXT	
+AtBottom . . . . . . . . . . . .	L Near	 000001DC _TEXT	
+CR . . . . . . . . . . . . . . .	Number	 0000000Dh   
+CheckBottom  . . . . . . . . . .	L Near	 000001BF _TEXT	
+CheckMore  . . . . . . . . . . .	L Near	 0000038F _TEXT	
+DecreaseEBX2 . . . . . . . . . .	L Near	 000001F1 _TEXT	
+DecreaseEBX  . . . . . . . . . .	L Near	 000001B6 _TEXT	
+DonePath . . . . . . . . . . . .	L Near	 000003C0 _TEXT	
+FillSquare . . . . . . . . . . .	L Near	 00000160 _TEXT	
+Finished . . . . . . . . . . . .	L Near	 00000236 _TEXT	
+GoDown2  . . . . . . . . . . . .	L Near	 0000035D _TEXT	
+GoDownEnd  . . . . . . . . . . .	L Near	 000003AE _TEXT	
+GoRight2 . . . . . . . . . . . .	L Near	 00000399 _TEXT	
+GoRightEnd . . . . . . . . . . .	L Near	 00000372 _TEXT	
+LF . . . . . . . . . . . . . . .	Number	 0000000Ah   
+MAXNBRS  . . . . . . . . . . . .	Number	 00000064h   
+MandNTotal . . . . . . . . . . .	Word	 000001E0 _DATA	
+Mcolumn  . . . . . . . . . . . .	Word	 000001D0 _DATA	
+NotAtBottomOrRight . . . . . . .	L Near	 000001F9 _TEXT	
+NotRightBottom . . . . . . . . .	L Near	 00000182 _TEXT	
+Nrow . . . . . . . . . . . . . .	Word	 000001C0 _DATA	
+RightBottom  . . . . . . . . . .	L Near	 0000017B _TEXT	
+RightSide  . . . . . . . . . . .	L Near	 0000018D _TEXT	
+StrDown  . . . . . . . . . . . .	Byte	 000002C2 _DATA	
+StrRight . . . . . . . . . . . .	Byte	 000002C0 _DATA	
+_start . . . . . . . . . . . . .	L Near	 00000000 _TEXT	Public
+atodproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+atoiproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+carriage . . . . . . . . . . . .	Byte	 00000000 _DATA	
+continueOn . . . . . . . . . . .	L Near	 00000171 _TEXT	
+dtoaproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+inproc . . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+itoaproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+lineOut  . . . . . . . . . . . .	Byte	 000001F8 _DATA	
+matrix_addr  . . . . . . . . . .	DWord	 00000010 _DATA	
+outproc  . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+string . . . . . . . . . . . . .	Byte	 000001F0 _DATA	
+text . . . . . . . . . . . . . .	Byte	 00000003 _DATA	
+whileStillFilling  . . . . . . .	L Near	 00000157 _TEXT	
+
+	   0 Warnings
+	   0 Errors

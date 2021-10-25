@@ -1,0 +1,31 @@
+#version 120
+#extension GL_EXT_geometry_shader4 : enable
+
+varying in vec4 eyeCoordPosition[3];
+varying out vec4 ecp;
+varying in vec3 transformedNormal[3];
+varying out vec3 tn;
+
+void main()
+{
+   float s1 = gl_TexCoordIn[0][0].s;
+   float s2 = gl_TexCoordIn[1][0].s;
+   float s3 = gl_TexCoordIn[2][0].s;
+   
+   for(int i = 0; i < gl_VerticesIn; i++)
+   {
+      gl_Position = gl_PositionIn[i];
+      gl_TexCoord[0] = gl_TexCoordIn[i][0];
+
+      if((s1 > 0.9 || s2 > 0.9 || s3 > 0.9) && gl_TexCoord[0].s < 0.1)
+      {
+         gl_TexCoord[0].s += 1.0;
+      }
+
+      tn = transformedNormal[i];
+      ecp = eyeCoordPosition[i];
+      EmitVertex();
+   }
+
+   EndPrimitive();
+}

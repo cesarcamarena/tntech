@@ -1,0 +1,193 @@
+Microsoft (R) Macro Assembler Version 6.15.8803		    11/07/18 15:41:01
+interpolate.asm						     Page 1 - 1
+
+
+				.386
+				.MODEL FLAT
+
+				INCLUDE debug.h
+			      C INCLUDE io.h
+			      C ; IO.H -- header file for I/O macros
+			      C ; 32-bit version for flat memory model
+			      C ; R. Detmer   last revised 8/2000
+			      C .NOLIST     ; turn off listing
+			      C .LIST        ; begin listing
+			      C 
+			      C 
+ = 0000000D		      C CR          EQU    0Dh   ; carriage return character
+ = 0000000A		      C LF          EQU    0Ah   ; linefeed character
+			      C 
+ 00000000		      C .DATA
+ 00000000 0D 0A 00	      C carriage    BYTE     CR, LF, 0
+ 00000003  0000000D [	      C text        BYTE     13 DUP(?)
+	    00
+	   ]
+			      C 
+			      C outputW    	MACRO   var
+			      C                    itoa text, var
+			      C                    output text
+			      C                    output carriage
+			      C                 ENDM
+			      C 
+			      C outputD  	MACRO  var
+			      C                    dtoa text, var
+			      C                    output text
+			      C                    output carriage
+			      C          	ENDM
+			      C 
+			      C inputW          MACRO  prompt, location
+			      C                    output prompt
+			      C                    input text, 8
+			      C                    atoi text
+			      C                    mov location, ax
+			      C                 ENDM
+			      C 
+			      C inputD          MACRO  prompt, location
+			      C                    output prompt
+			      C                    input text, 13
+			      C                    atod text
+			      C                    mov location, eax
+			      C                 ENDM
+			      C 
+				INCLUDE compute_b.h
+			      C .NOLIST
+			      C .LIST
+			      C 
+
+				PUBLIC interpolate_proc
+
+ = [ebp + 14]			array_addr		EQU [ebp + 14]
+ = [ebp + 10]			x_coord			EQU [ebp + 10]
+ = [ebp + 8]			degree			EQU [ebp + 8]
+ = [ebp - 4]			x 				EQU [ebp - 4] ;last on the stack
+
+ 00000000			.CODE
+					_obtain_x MACRO val_index, array
+						mov ebx, array
+						mov ax, val_index
+						shl ax, 3
+						movzx eax, ax
+						add ebx, eax
+						mov eax, [ebx]
+					ENDM
+
+ 00000000				interpolate_proc PROC Near32
+ 00000000  55					push ebp
+ 00000001  8B EC				mov ebp, esp
+ 00000003  6A 00				pushd 0
+ 00000005  50					push eax
+ 00000006  51					push ecx
+ 00000007  52					push edx
+ 00000008  66| 9C				pushf
+
+						;f(x) = [b0] + [b1 * (x - x0)] + [b2 * (x - x0) * (x - x1)] + [b3 * (x -x0) * (x - x1) * (x - x2)] + ...
+ 0000000A  66| B9 0001				mov cx, 1
+ 0000000E  66| B8 0000				mov ax, 0
+						compute_b DWORD PTR array_addr, ax ;top of the stack: b0
+ 00000025  66| 3B 4D 08				cmp cx, degree ;check if 1 < 3
+ 00000029  7F 4A				jg done
+
+ 0000002B				b_loop:
+						compute_b DWORD PTR array_addr, cx
+ 0000003E  66| BA 0000				mov dx, 0
+
+ 00000042				mul_loop:
+ 00000042  D9 45 0A				fld DWORD PTR x_coord ;x
+						_obtain_x dx, array_addr ;x0
+ 00000056  89 45 FC				mov x, eax
+ 00000059  D9 45 FC				fld DWORD PTR x
+ 0000005C  DE E9				fsub ;x - x0
+ 0000005E  DE C9				fmul ;b1 * (x - x0)
+ 00000060  66| 83 C2 01				add dx, 1 ;dx = 1
+ 00000064  66| 3B D1				cmp dx, cx ;dx >= 1
+ 00000067  7C D9				jl mul_loop
+ 00000069  DE C1				fadd ;b0 + b1x
+ 0000006B  66| 83 C1 01				add cx, 1
+ 0000006F  66| 3B 4D 08				cmp cx, degree
+ 00000073  7E B6				jle b_loop
+
+ 00000075				done:
+ 00000075  66| 9D				popf
+ 00000077  5A					pop edx
+ 00000078  59					pop ecx
+ 00000079  58					pop eax
+ 0000007A  8B E5				mov esp, ebp
+ 0000007C  5D					pop ebp
+ 0000007D  C2 000A				ret 10
+ 00000080				interpolate_proc ENDP
+
+				END
+Microsoft (R) Macro Assembler Version 6.15.8803		    11/07/18 15:41:01
+interpolate.asm						     Symbols 2 - 1
+
+
+
+
+Macros:
+
+                N a m e                 Type
+
+_obtain_x  . . . . . . . . . . .	Proc
+atod . . . . . . . . . . . . . .	Proc
+atoi . . . . . . . . . . . . . .	Proc
+compute_b  . . . . . . . . . . .	Proc
+dtoa . . . . . . . . . . . . . .	Proc
+inputD . . . . . . . . . . . . .	Proc
+inputW . . . . . . . . . . . . .	Proc
+input  . . . . . . . . . . . . .	Proc
+itoa . . . . . . . . . . . . . .	Proc
+outputD  . . . . . . . . . . . .	Proc
+outputW  . . . . . . . . . . . .	Proc
+output . . . . . . . . . . . . .	Proc
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000010 DWord	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 00000080 DWord	  Public  'CODE'	
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+interpolate_proc . . . . . . . .	P Near	 00000000 _TEXT	Length= 00000080 Public
+  b_loop . . . . . . . . . . . .	L Near	 0000002B _TEXT	
+  mul_loop . . . . . . . . . . .	L Near	 00000042 _TEXT	
+  done . . . . . . . . . . . . .	L Near	 00000075 _TEXT	
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000000h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+CR . . . . . . . . . . . . . . .	Number	 0000000Dh   
+LF . . . . . . . . . . . . . . .	Number	 0000000Ah   
+array_addr . . . . . . . . . . .	Text   	 [ebp + 14]
+atodproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+atoiproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+carriage . . . . . . . . . . . .	Byte	 00000000 _DATA	
+compute_b_proc . . . . . . . . .	L Near	 00000000 FLAT	External
+degree . . . . . . . . . . . . .	Text   	 [ebp + 8]
+dtoaproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+inproc . . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+itoaproc . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+outproc  . . . . . . . . . . . .	L Near	 00000000 FLAT	External
+text . . . . . . . . . . . . . .	Byte	 00000003 _DATA	
+x_coord  . . . . . . . . . . . .	Text   	 [ebp + 10]
+x  . . . . . . . . . . . . . . .	Text   	 [ebp - 4]
+
+	   0 Warnings
+	   0 Errors
